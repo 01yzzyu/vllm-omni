@@ -762,6 +762,17 @@ class OpenAIFullDuplexConnection:
         # Both shapes carry the knobs: the flat ``input_audio_transcription``
         # key and the GA session shape's ``audio.input.transcription``.
         transcription_cfg = input_audio_transcription_config(session)
+        if transcription_cfg is None:
+            # #11074 GA shape: the OpenAI SDK sends language and prompt under
+            # ``audio.input.transcription`` with no flat key. The sanitizer
+            # clears the nested form later, so read it from the raw update.
+            audio_cfg = session.get("audio")
+            if isinstance(audio_cfg, dict):
+                audio_input = audio_cfg.get("input")
+                if isinstance(audio_input, dict):
+                    nested = audio_input.get("transcription")
+                    if isinstance(nested, dict):
+                        transcription_cfg = nested
         if transcription_cfg is not None:
             candidate["language"] = transcription_cfg.get("language") or None
             candidate["prompt"] = transcription_cfg.get("prompt") or None
